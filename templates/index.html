@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RAG Search System</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <!-- Vector Store Configuration -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">Vector Store Configuration</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">PDF Directory Path</label>
+                    <input type="text" id="pdfPath" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" 
+                           placeholder="Enter path to PDF directory">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Vector Store Path</label>
+                    <input type="text" id="vectorStorePath" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" 
+                           placeholder="Enter path for vector store">
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="generateVectorStore()" 
+                            class="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600">
+                        Generate Vector Store
+                    </button>
+                    <button onclick="loadVectorStore()" 
+                            class="bg-yellow-500 text-white px-4 py-2 rounded-md hover:bg-yellow-600">
+                        Load Vector Store
+                    </button>
+                </div>
+                <div id="vectorStoreStatus" class="text-sm text-gray-600 hidden">
+                    <!-- Status messages will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Interface -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-semibold mb-4">RAG Search</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Query</label>
+                    <textarea id="searchQuery" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                </div>
+                <button onclick="search()" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
+                    Search
+                </button>
+            </div>
+        </div>
+
+        <!-- Conversation History -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4">Conversation History</h2>
+            <div id="conversationHistory" class="space-y-4">
+                <!-- Conversation items will be inserted here -->
+                <div class="text-gray-500">No conversation history yet.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize highlight.js
+        hljs.highlightAll();
+
+        async function search() {
+            const statusDiv = document.getElementById('vectorStoreStatus');
+            try {
+                statusDiv.innerHTML = 'Searching...';
+                statusDiv.className = 'text-sm text-blue-600';
+                statusDiv.classList.remove('hidden');
+
+                const query = document.getElementById('searchQuery').value;
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ query })
+                }).then(handleResponse);
+
+                addToHistory(query, response.response);
+                document.getElementById('searchQuery').value = '';
+                statusDiv.classList.add('hidden');
+            } catch (error) {
+                console.error('Search error:', error);
+                statusDiv.innerHTML = '❌ Error: ' + error.message;
+                statusDiv.className = 'text-sm text-red-600';
+            }
+        }
+
+        function addToHistory(query, response) {
+            const history = document.getElementById('conversationHistory');
+            const item = document.createElement('div');
+            
+            // Convert markdown to HTML
+            const htmlContent = marked.parse(response);
+            
+            item.innerHTML = `
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <div class="font-medium text-blue-600 mb-3">
+                        <svg class="inline w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
+                        </svg>
+                        ${query}
+                    </div>
+                    <div class="prose prose-sm max-w-none">
+                        ${htmlContent}
+                    </div>
+                </div>
+            `;
+            
+            history.insertBefore(item, history.firstChild);
+            hljs.highlightAll();
+        }
+
+        async function generateVectorStore() {
+            const pdfPath = document.getElementById('pdfPath').value;
+            const vectorPath = document.getElementById('vectorStorePath').value;
+            const statusDiv = document.getElementById('vectorStoreStatus');
+
+            if (!pdfPath || !vectorPath) {
+                alert('Please enter both PDF directory and vector store paths');
+                return;
+            }
+
+            statusDiv.innerHTML = 'Generating vector store... Please wait.';
+            statusDiv.className = 'text-sm text-blue-600';
+            statusDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/vector-store', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pdf_folder: pdfPath,
+                        vector_store_path: vectorPath
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to generate vector store');
+
+                const result = await response.json();
+                statusDiv.innerHTML = '✅ Vector store generated successfully!';
+                statusDiv.className = 'text-sm text-green-600';
+            } catch (error) {
+                console.error('Vector store generation error:', error);
+                statusDiv.innerHTML = '❌ Error generating vector store: ' + error.message;
+                statusDiv.className = 'text-sm text-red-600';
+            }
+        }
+        
+        async function handleResponse(response) {
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'Server error');
+            }
+            return response.json();
+        }
+
+        async function loadVectorStore() {
+            const vectorPath = document.getElementById('vectorStorePath').value;
+            const statusDiv = document.getElementById('vectorStoreStatus');
+
+            if (!vectorPath) {
+                alert('Please enter vector store path');
+                return;
+            }
+
+            statusDiv.innerHTML = 'Loading vector store...';
+            statusDiv.className = 'text-sm text-blue-600';
+            statusDiv.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/load-vector-store', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        vector_store_path: vectorPath
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to load vector store');
+
+                const result = await response.json();
+                statusDiv.innerHTML = '✅ Vector store loaded successfully!';
+                statusDiv.className = 'text-sm text-green-600';
+            } catch (error) {
+                console.error('Vector store loading error:', error);
+                statusDiv.innerHTML = '❌ Error loading vector store: ' + error.message;
+                statusDiv.className = 'text-sm text-red-600';
+            }
+        }
+    </script>
+</body>
+</html>
