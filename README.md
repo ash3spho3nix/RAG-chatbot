@@ -1,8 +1,16 @@
-# RAG (Retrieval Augmented Generation) Project
+# Offline RAG (Retrieval Augmented Generation) Project
 
 ## Project Overview
-My first experiment with RAG based chatbot, with an attempt to include features to make it faster, accurate and more robust.
-Advanced document retrieval and question-answering system using RAG architecture, combining FAISS vector storage with Ollama LLM capabilities.
+First step towards GenAI and LLMs.
+My first experiment with RAG based chatbot, with an attempt to include features to make it faster, accurate and more robust. 
+Main feature : this RAG based document retrieval and question-answering system can operate fully offline, without needing any api key(but after downloading/pulling the LLM and embedding models)
+
+Older obselete versions are also updated to keep track of the progress with time. 
+
+_Still few bugs exists, which needs to be fixed._
+1. instead of web scrapping, it needs to be changed to web search with Tavily integration
+2. Web layout needs to be updated.
+3. More models to be downloaded and tested.
 
 ## Versions
 - **Version 1**: Basic RAG implementation with FastAPI (Desktop version also available)
